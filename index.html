@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Transmisión para Isabella</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0b0c;
+    --panel:#151517;
+    --panel-2:#1d1d21;
+    --line:#2e2e33;
+    --amber:#ffb03a;
+    --amber-dim:#8a5f1f;
+    --cream:#ece4d4;
+    --muted:#9a948a;
+    --red:#ff4d3d;
+    --green:#53e08c;
+    --mono:'IBM Plex Mono', ui-monospace, Menlo, monospace;
+    --display:'Bebas Neue', Impact, sans-serif;
+  }
+
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; min-height:100%;}
+  body{
+    font-family:var(--mono);
+    background:
+      radial-gradient(ellipse at 50% -20%, #22190c 0%, transparent 60%),
+      linear-gradient(#0b0b0c, #0f0f11);
+    color:var(--cream);
+    min-height:100dvh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:16px;
+    user-select:none;
+    overflow-x:hidden;
+  }
+
+  /* ruido + scanlines */
+  .noise, .scan{position:fixed; inset:0; pointer-events:none; z-index:80;}
+  .noise{
+    opacity:.05;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)'/%3E%3C/svg%3E");
+    animation: noiseShift .35s steps(3) infinite;
+  }
+  @keyframes noiseShift{
+    0%{transform:translate(0,0);}33%{transform:translate(-4px,3px);}66%{transform:translate(3px,-3px);}100%{transform:translate(0,0);}
+  }
+  .scan{
+    background:repeating-linear-gradient(to bottom, rgba(255,255,255,.028) 0 1px, transparent 1px 3px);
+    opacity:.6;
+  }
+  .burst{
+    position:fixed; inset:0; z-index:85; pointer-events:none;
+    background:rgba(255,255,255,.75);
+    opacity:0;
+  }
+  .burst.go{animation: flash 420ms steps(6) forwards;}
+  @keyframes flash{
+    0%{opacity:.85;}20%{opacity:.1;}40%{opacity:.6;}60%{opacity:.05;}80%{opacity:.3;}100%{opacity:0;}
+  }
+
+  /* chasis */
+  .radio{
+    position:relative; z-index:10;
+    width:100%; max-width:430px;
+    background:linear-gradient(170deg, var(--panel-2), var(--panel));
+    border:1px solid var(--line);
+    border-radius:16px;
+    box-shadow:0 30px 70px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.05);
+    overflow:hidden;
+  }
+  .radio::after{
+    content:""; position:absolute; inset:0; pointer-events:none;
+    border-radius:16px;
+    box-shadow: inset 0 0 70px rgba(255,176,58,0);
+    transition: box-shadow 900ms ease;
+  }
+  .radio.on::after{box-shadow: inset 0 0 70px rgba(255,176,58,.09);}
+
+  /* barra superior */
+  .topbar{
+    display:flex; align-items:center; gap:10px;
+    padding:12px 14px;
+    border-bottom:1px solid var(--line);
+    background:rgba(0,0,0,.25);
+  }
+  .led{
+    width:9px; height:9px; border-radius:50%;
+    background:#3a2020; flex:none;
+    transition: background 400ms ease, box-shadow 400ms ease;
+  }
+  .led.live{background:var(--red); box-shadow:0 0 12px var(--red); animation: blink 1.4s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1;}50%{opacity:.35;}}
+  .onair{
+    font-family:var(--display); font-size:15px; letter-spacing:2.5px;
+    color:#55504a; transition:color 400ms ease;
+  }
+  .radio.on .onair{color:var(--red); text-shadow:0 0 14px rgba(255,77,61,.5);}
+  .freq{
+    margin-left:auto;
+    font-size:12px; letter-spacing:1px; color:var(--amber-dim);
+    transition:color 400ms ease;
+  }
+  .radio.on .freq{color:var(--amber);}
+
+  /* VU */
+  .vu{display:flex; align-items:flex-end; gap:3px; height:16px;}
+  .vu i{
+    display:block; width:3px; height:20%;
+    background:var(--amber-dim); border-radius:1px;
+    transition:background 400ms ease;
+  }
+  .radio.on .vu i{background:var(--amber); animation: vu 620ms ease-in-out infinite alternate;}
+  .radio.on .vu i:nth-child(2){animation-duration:430ms;}
+  .radio.on .vu i:nth-child(3){animation-duration:780ms;}
+  .radio.on .vu i:nth-child(4){animation-duration:520ms;}
+  .radio.on .vu i:nth-child(5){animation-duration:350ms;}
+  @keyframes vu{from{height:15%;}to{height:100%;}}
+
+  .body{padding:22px 18px 20px;}
+
+  .scene{display:none; flex-direction:column; gap:16px;}
+  .scene.active{display:flex; animation: fadeUp 520ms cubic-bezier(.2,.8,.3,1) both;}
+  @keyframes fadeUp{from{opacity:0; transform:translateY(14px);}to{opacity:1; transform:none;}}
+
+  .kicker{
+    font-size:10.5px; letter-spacing:3px; text-transform:uppercase;
+    color:var(--muted);
+  }
+  h1{
+    font-family:var(--display); margin:0;
+    font-size:clamp(34px,10.5vw,46px);
+    line-height:.95; letter-spacing:1.5px; color:var(--cream);
+  }
+  h1 .amber{color:var(--amber); text-shadow:0 0 26px rgba(255,176,58,.35);}
+
+  /* dial decorativo */
+  .dialstrip{
+    position:relative; height:52px;
+    border:1px solid var(--line); border-radius:8px;
+    background:
+      repeating-linear-gradient(90deg, rgba(236,228,212,.22) 0 1px, transparent 1px 11px),
+      linear-gradient(#131315,#0e0e10);
+    overflow:hidden;
+  }
+  .dialstrip::before{
+    content:""; position:absolute; left:0; right:0; top:50%; height:1px;
+    background:rgba(236,228,212,.12);
+  }
+  .needle{
+    position:absolute; top:4px; bottom:4px; width:2px;
+    background:var(--red); left:0;
+    box-shadow:0 0 12px var(--red);
+    transform:translateX(50px);
+    transition: transform 850ms cubic-bezier(.3,1.2,.4,1), left 850ms cubic-bezier(.3,1.2,.4,1);
+  }
+  .needle::after{
+    content:""; position:absolute; top:-3px; left:-3px;
+    width:8px; height:8px; border-radius:50%;
+    background:var(--red); box-shadow:0 0 10px var(--red);
+  }
+  .dialstrip.scanning .needle{animation: sweep 1.1s ease-in-out infinite alternate;}
+  @keyframes sweep{from{transform:translateX(24px);}to{transform:translateX(320px);}}
+
+  /* botones */
+  .btn{
+    font-family:var(--display); font-size:19px; letter-spacing:2px;
+    padding:14px 24px; min-height:50px;
+    width:100%;
+    border-radius:10px; cursor:pointer;
+    border:1px solid var(--amber);
+    background:linear-gradient(#2a1f0d,#1a1409);
+    color:var(--amber);
+    transition:transform 150ms ease, box-shadow 320ms ease, opacity 250ms ease;
+  }
+  .btn:hover,.btn:focus-visible{transform:translateY(-2px); box-shadow:0 0 24px rgba(255,176,58,.28); outline:none;}
+  .btn:active{transform:translateY(1px);}
+  .btn[disabled]{opacity:.32; cursor:not-allowed; transform:none; box-shadow:none;}
+  .btn.wa{
+    border-color:#30d158; color:#0c1a10;
+    background:linear-gradient(#41e072,#28b357);
+    font-size:20px;
+  }
+  .btn.wa:hover{box-shadow:0 0 28px rgba(48,209,88,.4);}
+  .btn.ghost{
+    border-color:var(--line); color:var(--muted);
+    background:transparent; font-size:14px; min-height:44px;
+    font-family:var(--mono); letter-spacing:1px;
+  }
+
+  /* transmisión */
+  .screen{
+    min-height:190px;
+    border:1px solid var(--line); border-radius:10px;
+    background:linear-gradient(#0d0d0f,#111114);
+    padding:16px 15px;
+    font-size:14.5px; line-height:1.85;
+    color:var(--cream);
+    box-shadow: inset 0 0 40px rgba(255,176,58,.05);
+  }
+  .screen .l{opacity:0; animation: lineIn 320ms ease forwards;}
+  @keyframes lineIn{to{opacity:1;}}
+  .screen .l.glitch{animation: lineIn 320ms ease forwards, jitter 240ms steps(2) 2;}
+  @keyframes jitter{0%{transform:translateX(0);}25%{transform:translateX(-3px);}50%{transform:translateX(2px);}100%{transform:translateX(0);}}
+  .screen .tag{color:var(--muted);}
+  .screen .hi{color:var(--amber); font-weight:600;}
+  .caret{
+    display:inline-block; width:8px; height:15px;
+    background:var(--amber); vertical-align:-2px;
+    animation: blink 800ms steps(2) infinite;
+  }
+
+  /* estaciones */
+  .stations{display:flex; flex-direction:column; gap:9px;}
+  .station{
+    display:flex; align-items:center; gap:13px;
+    width:100%; text-align:left;
+    padding:13px 14px; min-height:64px;
+    border:1px solid var(--line); border-radius:10px;
+    background:linear-gradient(#141416,#101012);
+    color:var(--cream); cursor:pointer;
+    font-family:var(--mono);
+    transition:border-color 260ms ease, background 260ms ease, transform 160ms ease;
+  }
+  .station:hover{transform:translateY(-1px); border-color:#45453d;}
+  .station .hz{
+    font-family:var(--display); font-size:19px; letter-spacing:1px;
+    color:var(--muted); flex:none; width:52px;
+    transition:color 260ms ease;
+  }
+  .station .txt strong{
+    display:block; font-size:14.5px; font-weight:600; letter-spacing:.3px;
+  }
+  .station .txt span{display:block; font-size:12px; color:var(--muted); margin-top:3px; line-height:1.4;}
+  .station .dot{
+    margin-left:auto; flex:none;
+    width:11px; height:11px; border-radius:50%;
+    border:1px solid #44443c; background:transparent;
+    transition:background 260ms ease, box-shadow 260ms ease, border-color 260ms ease;
+  }
+  .station[aria-pressed="true"]{
+    border-color:var(--amber);
+    background:linear-gradient(#251b0c,#171107);
+  }
+  .station[aria-pressed="true"] .hz{color:var(--amber);}
+  .station[aria-pressed="true"] .dot{
+    background:var(--amber); border-color:var(--amber); box-shadow:0 0 12px var(--amber);
+  }
+
+  /* stub final */
+  .stub{
+    border:1px dashed #4a453c; border-radius:10px;
+    padding:15px; background:rgba(236,228,212,.035);
+    display:flex; flex-direction:column; gap:9px;
+  }
+  .row{display:flex; justify-content:space-between; gap:12px; font-size:12.5px;}
+  .row b{font-weight:600; color:var(--cream); text-align:right;}
+  .row span{color:var(--muted); letter-spacing:.5px;}
+  .stub .sep{height:1px; background:#33322c;}
+
+  .fine{font-size:11px; color:var(--muted); line-height:1.6; margin:0; text-align:center;}
+  .egg{
+    background:none; border:none; color:#4d4a44;
+    font-family:var(--mono); font-size:10.5px; letter-spacing:1.5px;
+    cursor:pointer; padding:10px; min-height:44px; width:100%;
+  }
+  .egg:hover{color:var(--muted);}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.15s !important;}
+  }
+</style>
+</head>
+<body>
+
+<div class="noise" aria-hidden="true"></div>
+<div class="scan" aria-hidden="true"></div>
+<div class="burst" id="burst" aria-hidden="true"></div>
+
+<main class="radio" id="radio">
+
+  <div class="topbar">
+    <span class="led" id="led" aria-hidden="true"></span>
+    <span class="onair">ON AIR</span>
+    <span class="vu" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+    <span class="freq" id="freq">--.- FM</span>
+  </div>
+
+  <div class="body">
+
+    <!-- ========== 1 ========== -->
+    <section class="scene active" id="s1">
+      <div class="kicker">Señal entrante · origen desconocido</div>
+      <h1>Transmisión<br>para <span class="amber">Isabella</span></h1>
+      <div class="dialstrip scanning" aria-hidden="true"><span class="needle"></span></div>
+      <p class="fine">Frecuencia sin sintonizar. Se requiere encender el receptor.</p>
+      <button class="btn" id="powerBtn">Encender receptor</button>
+    </section>
+
+    <!-- ========== 2 ========== -->
+    <section class="scene" id="s2">
+      <div class="kicker">Transmitiendo en vivo</div>
+      <div class="screen" id="screen"></div>
+      <button class="btn" id="toDial" style="display:none;">Sintonizar fecha</button>
+    </section>
+
+    <!-- ========== 3 ========== -->
+    <section class="scene" id="s3">
+      <div class="kicker">Selecciona tu frecuencia</div>
+      <h1 style="font-size:clamp(26px,8vw,34px);">¿Cuándo<br>sintonizamos?</h1>
+      <div class="dialstrip" aria-hidden="true"><span class="needle" id="needle2"></span></div>
+
+      <div class="stations" id="stations" role="group" aria-label="Elige una fecha">
+        <button class="station" type="button" aria-pressed="false" data-i="0">
+          <span class="hz">88.5</span>
+          <span class="txt"><strong>Viernes 2 de octubre</strong><span>La propuesta oficial. Próximo viernes.</span></span>
+          <span class="dot"></span>
+        </button>
+        <button class="station" type="button" aria-pressed="false" data-i="1">
+          <span class="hz">92.3</span>
+          <span class="txt"><strong>Jueves 1 de octubre</strong><span>Un día antes, por si el viernes está peleado.</span></span>
+          <span class="dot"></span>
+        </button>
+        <button class="station" type="button" aria-pressed="false" data-i="2">
+          <span class="hz">99.1</span>
+          <span class="txt"><strong>Otro día, tú dices</strong><span>Acepto, pero la fecha la pongo yo.</span></span>
+          <span class="dot"></span>
+        </button>
+      </div>
+
+      <button class="btn" id="confirmBtn" disabled>Confirmar frecuencia</button>
+    </section>
+
+    <!-- ========== 4 ========== -->
+    <section class="scene" id="s4">
+      <div class="kicker">Transmisión recibida</div>
+      <h1 style="font-size:clamp(28px,8.5vw,38px);">Nos vemos<br>en <span class="amber">Antenna</span></h1>
+
+      <div class="stub">
+        <div class="row"><span>LUGAR</span><b>Antenna Sistema de Difusión</b></div>
+        <div class="sep"></div>
+        <div class="row"><span>DIRECCIÓN</span><b>Carrera 14 # 85-24</b></div>
+        <div class="sep"></div>
+        <div class="row"><span>FECHA</span><b id="stubDate">—</b></div>
+        <div class="sep"></div>
+        <div class="row"><span>PROGRAMACIÓN</span><b>Vinilos, cocteles y comida japonesa</b></div>
+        <div class="sep"></div>
+        <div class="row"><span>INVITADA</span><b>Isabella</b></div>
+      </div>
+
+      <a class="btn wa" id="waBtn" href="#" target="_blank" rel="noopener">Responder por WhatsApp</a>
+      <p class="fine">El botón abre el chat con el mensaje ya escrito.<br>Solo toca enviar.</p>
+      <button class="btn ghost" id="backBtn">Cambiar de frecuencia</button>
+      <button class="egg" id="eggBtn">· · · transmisión #002 · · ·</button>
+    </section>
+
+  </div>
+</main>
+
+<script>
+(function(){
+  "use strict";
+
+  var PHONE = "573143865187";
+
+  var OPTIONS = [
+    {
+      hz: "88.5",
+      date: "Viernes 2 de octubre",
+      stub: "Viernes 2 de octubre",
+      msg: "Recibí la transmisión 📻 Sintonicé 88.5: viernes 2 de octubre. Acepto ir a Antenna. Espero que la música esté a la altura."
+    },
+    {
+      hz: "92.3",
+      date: "Jueves 1 de octubre",
+      stub: "Jueves 1 de octubre",
+      msg: "Recibí la transmisión 📻 Sintonicé 92.3: jueves 1 de octubre. Acepto ir a Antenna, pero el jueves porque mando yo."
+    },
+    {
+      hz: "99.1",
+      date: "Fecha por definir",
+      stub: "Por definir (ella manda)",
+      msg: "Recibí la transmisión 📻 Sintonicé 99.1. Acepto ir a Antenna, pero la fecha la pongo yo. Ya te aviso cuándo se me despeja la agenda."
+    }
+  ];
+
+  var NEEDLE_POS = ["16%", "50%", "84%"];
+
+  var $ = function(s){ return document.querySelector(s); };
+  var radio = $('#radio');
+  var scenes = Array.prototype.slice.call(document.querySelectorAll('.scene'));
+  function go(id){ scenes.forEach(function(s){ s.classList.toggle('active', s.id === id); }); }
+
+  function flash(){
+    var b = $('#burst');
+    b.classList.remove('go');
+    void b.offsetWidth;
+    b.classList.add('go');
+  }
+
+  /* ---- frecuencia parpadeando mientras está apagado ---- */
+  var freqEl = $('#freq');
+  var scramble = setInterval(function(){
+    freqEl.textContent = (Math.random()*100).toFixed(1) + " FM";
+  }, 110);
+
+  /* ---- 1. encender ---- */
+  $('#powerBtn').addEventListener('click', function(){
+    clearInterval(scramble);
+    flash();
+    radio.classList.add('on');
+    $('#led').classList.add('live');
+    freqEl.textContent = "101.7 FM";
+    setTimeout(function(){ go('s2'); playTransmission(); }, 480);
+  });
+
+  /* ---- 2. transmisión ---- */
+  var LINES = [
+    { t:'> Interrumpimos la programación habitual.', tag:true },
+    { t:'> Mensaje dirigido a: <span class="hi">ISABELLA</span>.' },
+    { t:'> Hay un lugar en la 85 con 14.' },
+    { t:'> Tornamesas. Vinilos. Cocteles.' },
+    { t:'> Comida japonesa hasta tarde.', glitch:true },
+    { t:'> Nombre en clave: <span class="hi">ANTENNA</span>.' },
+    { t:'> Hay una silla reservada a tu nombre.' },
+    { t:'> Falta un solo dato: <span class="hi">la fecha</span>.' }
+  ];
+
+  function playTransmission(){
+    var screen = $('#screen');
+    screen.innerHTML = '';
+    var i = 0;
+    (function next(){
+      if (i >= LINES.length){
+        var b = $('#toDial');
+        b.style.display = 'block';
+        return;
+      }
+      var L = LINES[i++];
+      var div = document.createElement('div');
+      div.className = 'l' + (L.glitch ? ' glitch' : '');
+      div.innerHTML = L.t;
+      screen.appendChild(div);
+      screen.scrollTop = screen.scrollHeight;
+      setTimeout(next, L.glitch ? 620 : 470);
+    })();
+  }
+
+  $('#toDial').addEventListener('click', function(){ go('s3'); });
+
+  /* ---- 3. dial ---- */
+  var picked = null;
+  var stations = Array.prototype.slice.call(document.querySelectorAll('.station'));
+  var needle2 = $('#needle2');
+
+  stations.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var i = parseInt(btn.getAttribute('data-i'), 10);
+      picked = i;
+      stations.forEach(function(b){ b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'); });
+      needle2.style.transform = 'none';
+      needle2.style.left = NEEDLE_POS[i];
+      freqEl.textContent = OPTIONS[i].hz + " FM";
+      $('#confirmBtn').disabled = false;
+    });
+  });
+
+  $('#confirmBtn').addEventListener('click', function(){
+    if (picked === null) return;
+    flash();
+    var o = OPTIONS[picked];
+    $('#stubDate').textContent = o.stub;
+    $('#waBtn').setAttribute('href', 'https://wa.me/' + PHONE + '?text=' + encodeURIComponent(o.msg));
+    setTimeout(function(){ go('s4'); }, 280);
+  });
+
+  $('#backBtn').addEventListener('click', function(){ go('s3'); });
+
+  /* ---- easter egg: guiño a la primera tarjeta ---- */
+  var eggOn = false;
+  $('#eggBtn').addEventListener('click', function(){
+    if (eggOn) return;
+    eggOn = true;
+    var p = document.createElement('p');
+    p.className = 'fine';
+    p.style.color = 'var(--amber)';
+    p.style.marginTop = '2px';
+    p.textContent = 'El Sombrero Seleccionador sigue en terapia. Saludos a Severus. 🐈‍⬛';
+    $('#eggBtn').after(p);
+  });
+
+})();
+</script>
+
+</body>
+</html>
